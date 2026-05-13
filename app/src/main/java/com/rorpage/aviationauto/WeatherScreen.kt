@@ -10,20 +10,19 @@ import androidx.car.app.model.Action
 import androidx.car.app.model.MessageTemplate
 import androidx.car.app.model.ParkedOnlyOnClickListener
 import androidx.car.app.model.Template
+import java.util.concurrent.atomic.AtomicBoolean
 import kotlin.concurrent.thread
 
 class WeatherScreen(carContext: CarContext) : Screen(carContext) {
     @Volatile
     private var statusText: String = "Loading weather..."
 
-    @Volatile
-    private var loaded = false
+    private val loading = AtomicBoolean(false)
 
     private val weatherRepository = WeatherRepository()
 
     override fun onGetTemplate(): Template {
-        if (!loaded) {
-            loaded = true
+        if (loading.compareAndSet(false, true)) {
             thread(start = true, name = "weather-loader") {
                 statusText = runCatching {
                     val location = getLastKnownLocation(carContext)
@@ -45,7 +44,7 @@ class WeatherScreen(carContext: CarContext) : Screen(carContext) {
                 Action.Builder()
                     .setTitle("Refresh")
                     .setOnClickListener(ParkedOnlyOnClickListener.create {
-                        loaded = false
+                        loading.set(false)
                         statusText = "Loading weather..."
                         invalidate()
                     })
